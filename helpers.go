@@ -328,10 +328,6 @@ func writableTextFile(name string, contentFn func() string, writeFn func(string)
 	return fileEntry{Name: name, ContentFn: contentFn, WriteFn: writeFn}
 }
 
-func writableJSONFile(name string, contentFn func() string, writeFn func(string) error) fileEntry {
-	return fileEntry{Name: name, ContentFn: contentFn, WriteFn: writeFn}
-}
-
 // parseLabels parses a JSON object into map[string]string for label updates.
 func parseLabels(v string) (map[string]string, error) {
 	var labels map[string]string

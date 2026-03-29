@@ -28,7 +28,7 @@ func newPlacementGroupsNode(client *hcloud.Client, selector string) fs.InodeEmbe
 			}),
 				textFile("type", string(pg.Type)),
 				textFile("created", pg.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(pg.Labels, "", "  ")
 					return string(data) + "\n"

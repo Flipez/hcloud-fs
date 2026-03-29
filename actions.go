@@ -47,8 +47,6 @@ func (n *actionsDir) Lookup(ctx context.Context, name string, out *fuse.EntryOut
 var _ = (fs.NodeReaddirer)((*actionsDir)(nil))
 var _ = (fs.NodeLookuper)((*actionsDir)(nil))
 
-// actionInstanceDir re-reads from the cache on every file access so that
-// progress and status always reflect the latest data.
 type actionInstanceDir struct {
 	dirNode
 	cache *cache[*hcloud.Action]
@@ -110,7 +108,6 @@ func (n *actionInstanceDir) Lookup(ctx context.Context, name string, out *fuse.E
 		return ""
 	}
 
-	// Validate the name exists before returning a node.
 	a := n.getAction()
 	if a == nil {
 		return nil, syscall.ENOENT
@@ -136,58 +133,63 @@ func (n *actionInstanceDir) Lookup(ctx context.Context, name string, out *fuse.E
 var _ = (fs.NodeReaddirer)((*actionInstanceDir)(nil))
 var _ = (fs.NodeLookuper)((*actionInstanceDir)(nil))
 
-// actionsFetchFn helpers for each resource type with an Action client.
+// makeActionsFn returns a fetch function for a resource's actions, sorted newest first.
+func makeActionsFn(allFor func(context.Context, hcloud.ActionListOpts) ([]*hcloud.Action, error)) func() ([]*hcloud.Action, error) {
+	return func() ([]*hcloud.Action, error) {
+		return allFor(context.Background(), hcloud.ActionListOpts{Sort: []string{"started:desc"}})
+	}
+}
 
 func serverActionsFn(client *hcloud.Client, s *hcloud.Server) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.Server.Action.AllFor(context.Background(), s, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.Server.Action.AllFor(ctx, s, opts)
+	})
 }
 
 func volumeActionsFn(client *hcloud.Client, v *hcloud.Volume) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.Volume.Action.AllFor(context.Background(), v, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.Volume.Action.AllFor(ctx, v, opts)
+	})
 }
 
 func networkActionsFn(client *hcloud.Client, net *hcloud.Network) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.Network.Action.AllFor(context.Background(), net, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.Network.Action.AllFor(ctx, net, opts)
+	})
 }
 
 func loadBalancerActionsFn(client *hcloud.Client, lb *hcloud.LoadBalancer) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.LoadBalancer.Action.AllFor(context.Background(), lb, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.LoadBalancer.Action.AllFor(ctx, lb, opts)
+	})
 }
 
 func floatingIPActionsFn(client *hcloud.Client, fip *hcloud.FloatingIP) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.FloatingIP.Action.AllFor(context.Background(), fip, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.FloatingIP.Action.AllFor(ctx, fip, opts)
+	})
 }
 
 func primaryIPActionsFn(client *hcloud.Client, pip *hcloud.PrimaryIP) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.PrimaryIP.Action.AllFor(context.Background(), pip, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.PrimaryIP.Action.AllFor(ctx, pip, opts)
+	})
 }
 
 func imageActionsFn(client *hcloud.Client, img *hcloud.Image) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.Image.Action.AllFor(context.Background(), img, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.Image.Action.AllFor(ctx, img, opts)
+	})
 }
 
 func certificateActionsFn(client *hcloud.Client, c *hcloud.Certificate) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.Certificate.Action.AllFor(context.Background(), c, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.Certificate.Action.AllFor(ctx, c, opts)
+	})
 }
 
 func firewallActionsFn(client *hcloud.Client, fw *hcloud.Firewall) func() ([]*hcloud.Action, error) {
-	return func() ([]*hcloud.Action, error) {
-		return client.Firewall.Action.AllFor(context.Background(), fw, hcloud.ActionListOpts{Sort: []string{"started:desc"}})
-	}
+	return makeActionsFn(func(ctx context.Context, opts hcloud.ActionListOpts) ([]*hcloud.Action, error) {
+		return client.Firewall.Action.AllFor(ctx, fw, opts)
+	})
 }

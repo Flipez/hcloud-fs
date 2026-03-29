@@ -29,7 +29,7 @@ func newFloatingIPsNode(client *hcloud.Client, selector string) fs.InodeEmbedder
 				textFile("ip", fip.IP.String()),
 				textFile("type", string(fip.Type)),
 				textFile("created", fip.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(fip.Labels, "", "  ")
 					return string(data) + "\n"

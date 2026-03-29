@@ -26,7 +26,7 @@ func newFirewallsNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				return err
 			}),
 				textFile("created", fw.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(fw.Labels, "", "  ")
 					return string(data) + "\n"

@@ -29,7 +29,7 @@ func newCertificatesNode(client *hcloud.Client, selector string) fs.InodeEmbedde
 				textFile("type", string(c.Type)),
 				textFile("fingerprint", c.Fingerprint),
 				textFile("created", c.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(c.Labels, "", "  ")
 					return string(data) + "\n"

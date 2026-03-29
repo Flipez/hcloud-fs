@@ -56,13 +56,20 @@ type prometheusFile struct {
 
 func (f *prometheusFile) get() string {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	if time.Since(f.fetched) < f.ttl {
-		return f.cached
+		cached := f.cached
+		f.mu.Unlock()
+		return cached
 	}
+	f.mu.Unlock()
+
+	// Fetch outside the lock so concurrent reads don't block.
 	content, err := f.genFn()
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if err != nil {
-		return f.cached // return stale on error
+		return f.cached
 	}
 	f.cached = content
 	f.fetched = time.Now()
@@ -82,24 +89,11 @@ func (f *prometheusFile) Getattr(ctx context.Context, fh fs.FileHandle, out *fus
 var _ = (fs.NodeOpener)((*prometheusFile)(nil))
 var _ = (fs.NodeGetattrer)((*prometheusFile)(nil))
 
-// latestValue extracts the last non-empty value from a time series.
-func latestValue(values []hcloud.ServerMetricsValue) (float64, bool) {
-	for i := len(values) - 1; i >= 0; i-- {
-		if values[i].Value != "" {
-			f, err := strconv.ParseFloat(values[i].Value, 64)
-			if err == nil {
-				return f, true
-			}
-		}
-	}
-	return 0, false
-}
-
-func latestLBValue(values []hcloud.LoadBalancerMetricsValue) (float64, bool) {
-	for i := len(values) - 1; i >= 0; i-- {
-		if values[i].Value != "" {
-			f, err := strconv.ParseFloat(values[i].Value, 64)
-			if err == nil {
+// latestMetricVal extracts the last non-empty value from a time series via an index function.
+func latestMetricVal(n int, val func(int) string) (float64, bool) {
+	for i := n - 1; i >= 0; i-- {
+		if v := val(i); v != "" {
+			if f, err := strconv.ParseFloat(v, 64); err == nil {
 				return f, true
 			}
 		}
@@ -171,7 +165,7 @@ func buildServerMetrics(client *hcloud.Client) (string, error) {
 			if !ok {
 				continue
 			}
-			val, ok := latestValue(ts)
+			val, ok := latestMetricVal(len(ts), func(i int) string { return ts[i].Value })
 			if !ok {
 				continue
 			}
@@ -248,7 +242,7 @@ func buildLoadBalancerMetrics(client *hcloud.Client) (string, error) {
 			if !ok {
 				continue
 			}
-			val, ok := latestLBValue(ts)
+			val, ok := latestMetricVal(len(ts), func(i int) string { return ts[i].Value })
 			if !ok {
 				continue
 			}

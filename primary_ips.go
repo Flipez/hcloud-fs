@@ -29,7 +29,7 @@ func newPrimaryIPsNode(client *hcloud.Client, selector string) fs.InodeEmbedder 
 				textFile("ip", pip.IP.String()),
 				textFile("type", string(pip.Type)),
 				textFile("created", pip.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(pip.Labels, "", "  ")
 					return string(data) + "\n"

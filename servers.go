@@ -44,7 +44,7 @@ func newServersNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 					}
 				}),
 				textFile("created", s.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(s.Labels, "", "  ")
 					return string(data) + "\n"
