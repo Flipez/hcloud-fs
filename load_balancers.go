@@ -25,6 +25,7 @@ func newLoadBalancersNode(client *hcloud.Client, selector string) fs.InodeEmbedd
 				textFile("algorithm", string(lb.Algorithm.Type)),
 				jsonFile("labels.json", lb.Labels),
 				jsonFile("metadata.json", lb),
+				subDir("actions", newActionsDir(loadBalancerActionsFn(client, lb))),
 			}
 			if lb.LoadBalancerType != nil {
 				files = append(files, textFile("type", lb.LoadBalancerType.Name))

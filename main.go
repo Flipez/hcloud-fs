@@ -8,7 +8,6 @@ import (
 	"syscall"
 
 	"github.com/hanwen/go-fuse/v2/fs"
-	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 )
 
@@ -25,11 +24,7 @@ func main() {
 	}
 
 	client := hcloud.NewClient(hcloud.WithToken(token))
-	opts := &fs.Options{
-		MountOptions: fuse.MountOptions{
-			Options: []string{"nobrowse"},
-		},
-	}
+	opts := &fs.Options{}
 	opts.Debug = *debug
 
 	server, err := fs.Mount(flag.Arg(0), newRootNode(client), opts)

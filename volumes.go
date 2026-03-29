@@ -27,6 +27,7 @@ func newVolumesNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("linux_device", v.LinuxDevice),
 				textFile("created", v.Created.Format(time.RFC3339)),
 				jsonFile("labels.json", v.Labels),
+				subDir("actions", newActionsDir(volumeActionsFn(client, v))),
 			}
 			if v.Format != nil {
 				files = append(files, textFile("format", *v.Format))

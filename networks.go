@@ -24,6 +24,7 @@ func newNetworksNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("ip_range", net.IPRange.String()),
 				textFile("created", net.Created.Format(time.RFC3339)),
 				jsonFile("labels.json", net.Labels),
+				subDir("actions", newActionsDir(networkActionsFn(client, net))),
 			}
 			if len(net.Subnets) > 0 {
 				files = append(files, jsonFile("subnets.json", net.Subnets))

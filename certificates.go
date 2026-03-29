@@ -26,6 +26,7 @@ func newCertificatesNode(client *hcloud.Client, selector string) fs.InodeEmbedde
 				textFile("fingerprint", c.Fingerprint),
 				textFile("created", c.Created.Format(time.RFC3339)),
 				jsonFile("labels.json", c.Labels),
+				subDir("actions", newActionsDir(certificateActionsFn(client, c))),
 			}
 			if !c.NotValidBefore.IsZero() {
 				files = append(files, textFile("not_valid_before", c.NotValidBefore.Format(time.RFC3339)))

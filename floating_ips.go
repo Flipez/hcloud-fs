@@ -26,6 +26,7 @@ func newFloatingIPsNode(client *hcloud.Client, selector string) fs.InodeEmbedder
 				textFile("type", string(fip.Type)),
 				textFile("created", fip.Created.Format(time.RFC3339)),
 				jsonFile("labels.json", fip.Labels),
+				subDir("actions", newActionsDir(floatingIPActionsFn(client, fip))),
 			}
 			if fip.Server != nil {
 				files = append(files, textFile("server", idStr(fip.Server.ID)))

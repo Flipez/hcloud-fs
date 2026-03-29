@@ -68,16 +68,21 @@ type cache[T any] struct {
 	mu      sync.Mutex
 	data    []T
 	fetched time.Time
+	ttl     time.Duration
 	fetchFn func() ([]T, error)
 }
 
 func newCache[T any](fetchFn func() ([]T, error)) *cache[T] {
-	return &cache[T]{fetchFn: fetchFn}
+	return &cache[T]{fetchFn: fetchFn, ttl: cacheTTL}
+}
+
+func newCacheWithTTL[T any](ttl time.Duration, fetchFn func() ([]T, error)) *cache[T] {
+	return &cache[T]{fetchFn: fetchFn, ttl: ttl}
 }
 
 func (c *cache[T]) get() []T {
 	c.mu.Lock()
-	if time.Since(c.fetched) < cacheTTL {
+	if time.Since(c.fetched) < c.ttl {
 		data := c.data
 		c.mu.Unlock()
 		return data
@@ -106,7 +111,8 @@ func (c *cache[T]) find(idFn func(T) string, id string) (T, bool) {
 
 type fileEntry struct {
 	Name      string
-	ContentFn func() string
+	ContentFn func() string     // non-nil: regular file
+	DirNode   fs.InodeEmbedder // non-nil: subdirectory
 }
 
 type resourceDir[T any] struct {
@@ -165,14 +171,24 @@ func (n *resourceInstanceDir[T]) Readdir(ctx context.Context) (fs.DirStream, sys
 	files := n.getFiles()
 	entries := make([]fuse.DirEntry, len(files))
 	for i, f := range files {
-		entries[i] = fuse.DirEntry{Name: f.Name}
+		mode := uint32(0)
+		if f.DirNode != nil {
+			mode = syscall.S_IFDIR
+		}
+		entries[i] = fuse.DirEntry{Name: f.Name, Mode: mode}
 	}
 	return fs.NewListDirStream(entries), 0
 }
 
 func (n *resourceInstanceDir[T]) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+	out.SetEntryTimeout(cacheTTL)
+	out.SetAttrTimeout(cacheTTL)
 	for _, f := range n.getFiles() {
 		if f.Name == name {
+			if f.DirNode != nil {
+				child := n.NewPersistentInode(ctx, f.DirNode, fs.StableAttr{Mode: syscall.S_IFDIR})
+				return child, 0
+			}
 			child := n.NewInode(ctx, &dynamicFile{contentFn: f.ContentFn}, fs.StableAttr{})
 			return child, 0
 		}
@@ -195,6 +211,10 @@ func jsonFile(name string, v any) fileEntry {
 		}
 		return string(data) + "\n"
 	}}
+}
+
+func subDir(name string, node fs.InodeEmbedder) fileEntry {
+	return fileEntry{Name: name, DirNode: node}
 }
 
 func idStr(id int64) string {

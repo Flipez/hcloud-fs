@@ -26,6 +26,7 @@ func newPrimaryIPsNode(client *hcloud.Client, selector string) fs.InodeEmbedder 
 				textFile("type", string(pip.Type)),
 				textFile("created", pip.Created.Format(time.RFC3339)),
 				jsonFile("labels.json", pip.Labels),
+				subDir("actions", newActionsDir(primaryIPActionsFn(client, pip))),
 			}
 			if pip.AssigneeID != 0 {
 				files = append(files, textFile("assignee_id", fmt.Sprintf("%d", pip.AssigneeID)))

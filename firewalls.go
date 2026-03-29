@@ -23,6 +23,7 @@ func newFirewallsNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("name", fw.Name),
 				textFile("created", fw.Created.Format(time.RFC3339)),
 				jsonFile("labels.json", fw.Labels),
+				subDir("actions", newActionsDir(firewallActionsFn(client, fw))),
 			}
 			if len(fw.Rules) > 0 {
 				files = append(files, jsonFile("rules.json", fw.Rules))

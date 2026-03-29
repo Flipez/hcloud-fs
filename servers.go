@@ -25,6 +25,7 @@ func newServersNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("created", s.Created.Format(time.RFC3339)),
 				jsonFile("labels.json", s.Labels),
 				jsonFile("metadata.json", s),
+				subDir("actions", newActionsDir(serverActionsFn(client, s))),
 			}
 			if s.ServerType != nil {
 				files = append(files, textFile("server_type", s.ServerType.Name))

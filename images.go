@@ -31,6 +31,7 @@ func newImagesNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("disk_size", fmt.Sprintf("%.1f", img.DiskSize)),
 				textFile("created", img.Created.Format(time.RFC3339)),
 				jsonFile("labels.json", img.Labels),
+				subDir("actions", newActionsDir(imageActionsFn(client, img))),
 			}
 		},
 	}
