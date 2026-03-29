@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"context"
 	"time"
 
@@ -20,12 +21,27 @@ func newFloatingIPsNode(client *hcloud.Client, selector string) fs.InodeEmbedder
 		idFn: func(fip *hcloud.FloatingIP) string { return idStr(fip.ID) },
 		filesFn: func(fip *hcloud.FloatingIP) []fileEntry {
 			files := []fileEntry{
-				textFile("name", fip.Name),
+				writableTextFile("name", func() string { return fip.Name }, func(v string) error {
+				_, _, err := client.FloatingIP.Update(context.Background(), fip, hcloud.FloatingIPUpdateOpts{Name: v})
+				return err
+			}),
 				textFile("description", fip.Description),
 				textFile("ip", fip.IP.String()),
 				textFile("type", string(fip.Type)),
 				textFile("created", fip.Created.Format(time.RFC3339)),
-				jsonFile("labels.json", fip.Labels),
+				writableJSONFile("labels.json",
+				func() string {
+					data, _ := json.MarshalIndent(fip.Labels, "", "  ")
+					return string(data) + "\n"
+				},
+				func(v string) error {
+					labels, err := parseLabels(v)
+					if err != nil {
+						return err
+					}
+					_, _, err = client.FloatingIP.Update(context.Background(), fip, hcloud.FloatingIPUpdateOpts{Labels: labels})
+					return err
+				}),
 				subDir("actions", newActionsDir(floatingIPActionsFn(client, fip))),
 			}
 			if fip.Server != nil {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"context"
 	"fmt"
 	"time"
@@ -21,12 +22,27 @@ func newVolumesNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 		idFn: func(v *hcloud.Volume) string { return idStr(v.ID) },
 		filesFn: func(v *hcloud.Volume) []fileEntry {
 			files := []fileEntry{
-				textFile("name", v.Name),
+				writableTextFile("name", func() string { return v.Name }, func(val string) error {
+				_, _, err := client.Volume.Update(context.Background(), v, hcloud.VolumeUpdateOpts{Name: val})
+				return err
+			}),
 				textFile("status", string(v.Status)),
 				textFile("size", fmt.Sprintf("%d", v.Size)),
 				textFile("linux_device", v.LinuxDevice),
 				textFile("created", v.Created.Format(time.RFC3339)),
-				jsonFile("labels.json", v.Labels),
+				writableJSONFile("labels.json",
+				func() string {
+					data, _ := json.MarshalIndent(v.Labels, "", "  ")
+					return string(data) + "\n"
+				},
+				func(val string) error {
+					labels, err := parseLabels(val)
+					if err != nil {
+						return err
+					}
+					_, _, err = client.Volume.Update(context.Background(), v, hcloud.VolumeUpdateOpts{Labels: labels})
+					return err
+				}),
 				subDir("actions", newActionsDir(volumeActionsFn(client, v))),
 			}
 			if v.Format != nil {

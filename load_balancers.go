@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"context"
 	"time"
 
@@ -20,10 +21,25 @@ func newLoadBalancersNode(client *hcloud.Client, selector string) fs.InodeEmbedd
 		idFn: func(lb *hcloud.LoadBalancer) string { return idStr(lb.ID) },
 		filesFn: func(lb *hcloud.LoadBalancer) []fileEntry {
 			files := []fileEntry{
-				textFile("name", lb.Name),
+				writableTextFile("name", func() string { return lb.Name }, func(v string) error {
+				_, _, err := client.LoadBalancer.Update(context.Background(), lb, hcloud.LoadBalancerUpdateOpts{Name: v})
+				return err
+			}),
 				textFile("created", lb.Created.Format(time.RFC3339)),
 				textFile("algorithm", string(lb.Algorithm.Type)),
-				jsonFile("labels.json", lb.Labels),
+				writableJSONFile("labels.json",
+				func() string {
+					data, _ := json.MarshalIndent(lb.Labels, "", "  ")
+					return string(data) + "\n"
+				},
+				func(v string) error {
+					labels, err := parseLabels(v)
+					if err != nil {
+						return err
+					}
+					_, _, err = client.LoadBalancer.Update(context.Background(), lb, hcloud.LoadBalancerUpdateOpts{Labels: labels})
+					return err
+				}),
 				jsonFile("metadata.json", lb),
 				subDir("actions", newActionsDir(loadBalancerActionsFn(client, lb))),
 			}

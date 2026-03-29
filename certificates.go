@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"context"
 	"strings"
 	"time"
@@ -21,11 +22,26 @@ func newCertificatesNode(client *hcloud.Client, selector string) fs.InodeEmbedde
 		idFn: func(c *hcloud.Certificate) string { return idStr(c.ID) },
 		filesFn: func(c *hcloud.Certificate) []fileEntry {
 			files := []fileEntry{
-				textFile("name", c.Name),
+				writableTextFile("name", func() string { return c.Name }, func(v string) error {
+				_, _, err := client.Certificate.Update(context.Background(), c, hcloud.CertificateUpdateOpts{Name: v})
+				return err
+			}),
 				textFile("type", string(c.Type)),
 				textFile("fingerprint", c.Fingerprint),
 				textFile("created", c.Created.Format(time.RFC3339)),
-				jsonFile("labels.json", c.Labels),
+				writableJSONFile("labels.json",
+				func() string {
+					data, _ := json.MarshalIndent(c.Labels, "", "  ")
+					return string(data) + "\n"
+				},
+				func(v string) error {
+					labels, err := parseLabels(v)
+					if err != nil {
+						return err
+					}
+					_, _, err = client.Certificate.Update(context.Background(), c, hcloud.CertificateUpdateOpts{Labels: labels})
+					return err
+				}),
 				subDir("actions", newActionsDir(certificateActionsFn(client, c))),
 			}
 			if !c.NotValidBefore.IsZero() {

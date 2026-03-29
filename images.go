@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"context"
 	"fmt"
 	"time"
@@ -30,7 +31,19 @@ func newImagesNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("architecture", string(img.Architecture)),
 				textFile("disk_size", fmt.Sprintf("%.1f", img.DiskSize)),
 				textFile("created", img.Created.Format(time.RFC3339)),
-				jsonFile("labels.json", img.Labels),
+				writableJSONFile("labels.json",
+				func() string {
+					data, _ := json.MarshalIndent(img.Labels, "", "  ")
+					return string(data) + "\n"
+				},
+				func(v string) error {
+					labels, err := parseLabels(v)
+					if err != nil {
+						return err
+					}
+					_, _, err = client.Image.Update(context.Background(), img, hcloud.ImageUpdateOpts{Labels: labels})
+					return err
+				}),
 				subDir("actions", newActionsDir(imageActionsFn(client, img))),
 			}
 		},

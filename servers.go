@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"context"
+	"syscall"
 	"time"
 
 	"github.com/hanwen/go-fuse/v2/fs"
@@ -20,10 +22,41 @@ func newServersNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 		idFn: func(s *hcloud.Server) string { return idStr(s.ID) },
 		filesFn: func(s *hcloud.Server) []fileEntry {
 			files := []fileEntry{
-				textFile("name", s.Name),
-				textFile("status", string(s.Status)),
+				writableTextFile("name", func() string { return s.Name }, func(v string) error {
+				_, _, err := client.Server.Update(context.Background(), s, hcloud.ServerUpdateOpts{Name: v})
+				return err
+			}),
+				writableTextFile("status",
+				func() string { return string(s.Status) },
+				func(v string) error {
+					switch v {
+					case "off":
+						_, _, err := client.Server.Poweroff(context.Background(), s)
+						return err
+					case "running", "on":
+						_, _, err := client.Server.Poweron(context.Background(), s)
+						return err
+					case "shutdown":
+						_, _, err := client.Server.Shutdown(context.Background(), s)
+						return err
+					default:
+						return syscall.EINVAL
+					}
+				}),
 				textFile("created", s.Created.Format(time.RFC3339)),
-				jsonFile("labels.json", s.Labels),
+				writableJSONFile("labels.json",
+				func() string {
+					data, _ := json.MarshalIndent(s.Labels, "", "  ")
+					return string(data) + "\n"
+				},
+				func(v string) error {
+					labels, err := parseLabels(v)
+					if err != nil {
+						return err
+					}
+					_, _, err = client.Server.Update(context.Background(), s, hcloud.ServerUpdateOpts{Labels: labels})
+					return err
+				}),
 				jsonFile("metadata.json", s),
 				subDir("actions", newActionsDir(serverActionsFn(client, s))),
 			}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"context"
 	"time"
 
@@ -20,11 +21,26 @@ func newSSHKeysNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 		idFn: func(k *hcloud.SSHKey) string { return idStr(k.ID) },
 		filesFn: func(k *hcloud.SSHKey) []fileEntry {
 			return []fileEntry{
-				textFile("name", k.Name),
+				writableTextFile("name", func() string { return k.Name }, func(v string) error {
+				_, _, err := client.SSHKey.Update(context.Background(), k, hcloud.SSHKeyUpdateOpts{Name: v})
+				return err
+			}),
 				textFile("fingerprint", k.Fingerprint),
 				textFile("public_key", k.PublicKey),
 				textFile("created", k.Created.Format(time.RFC3339)),
-				jsonFile("labels.json", k.Labels),
+				writableJSONFile("labels.json",
+				func() string {
+					data, _ := json.MarshalIndent(k.Labels, "", "  ")
+					return string(data) + "\n"
+				},
+				func(v string) error {
+					labels, err := parseLabels(v)
+					if err != nil {
+						return err
+					}
+					_, _, err = client.SSHKey.Update(context.Background(), k, hcloud.SSHKeyUpdateOpts{Labels: labels})
+					return err
+				}),
 			}
 		},
 	}

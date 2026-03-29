@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"context"
 	"time"
 
@@ -20,9 +21,24 @@ func newFirewallsNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 		idFn: func(fw *hcloud.Firewall) string { return idStr(fw.ID) },
 		filesFn: func(fw *hcloud.Firewall) []fileEntry {
 			files := []fileEntry{
-				textFile("name", fw.Name),
+				writableTextFile("name", func() string { return fw.Name }, func(v string) error {
+				_, _, err := client.Firewall.Update(context.Background(), fw, hcloud.FirewallUpdateOpts{Name: v})
+				return err
+			}),
 				textFile("created", fw.Created.Format(time.RFC3339)),
-				jsonFile("labels.json", fw.Labels),
+				writableJSONFile("labels.json",
+				func() string {
+					data, _ := json.MarshalIndent(fw.Labels, "", "  ")
+					return string(data) + "\n"
+				},
+				func(v string) error {
+					labels, err := parseLabels(v)
+					if err != nil {
+						return err
+					}
+					_, _, err = client.Firewall.Update(context.Background(), fw, hcloud.FirewallUpdateOpts{Labels: labels})
+					return err
+				}),
 				subDir("actions", newActionsDir(firewallActionsFn(client, fw))),
 			}
 			if len(fw.Rules) > 0 {
