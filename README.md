@@ -22,29 +22,38 @@ Unmount with Ctrl-C or `umount /tmp/hcloud`.
 ```
 /tmp/hcloud/
   servers/
-    <id>/         name, status, location, public_ipv4, public_ipv6,
-                  server_type, image, labels.json, metadata.json
+    <id>/         name*, status*, location, public_ipv4, public_ipv6,
+                  server_type, image, labels.json*, metadata.json,
+                  actions/<action-id>/{command,status,progress,started,finished,error}
   firewalls/
-    <id>/         name, rules.json, applied_to.json, labels.json
+    <id>/         name*, rules.json, applied_to.json, labels.json*,
+                  actions/<action-id>/...
   ssh_keys/
-    <id>/         name, fingerprint, public_key
+    <id>/         name*, fingerprint, public_key, labels.json*
   load_balancers/
-    <id>/         name, type, location, public_ipv4, algorithm,
-                  services.json, targets.json, labels.json
+    <id>/         name*, type, location, public_ipv4, algorithm,
+                  services.json, targets.json, labels.json*, metadata.json,
+                  actions/<action-id>/...
   networks/
-    <id>/         name, ip_range, subnets.json, routes.json
+    <id>/         name*, ip_range, subnets.json, routes.json, labels.json*,
+                  actions/<action-id>/...
   volumes/
-    <id>/         name, status, size, format, server, location
+    <id>/         name*, status, size, format, server, location, labels.json*,
+                  actions/<action-id>/...
   floating_ips/
-    <id>/         name, ip, type, server, location
+    <id>/         name*, description, ip, type, server, location, labels.json*,
+                  actions/<action-id>/...
   primary_ips/
-    <id>/         name, ip, type, assignee_id, location
+    <id>/         name*, ip, type, assignee_id, location, labels.json*,
+                  actions/<action-id>/...
   certificates/
-    <id>/         name, type, fingerprint, domain_names, not_valid_before/after
+    <id>/         name*, type, fingerprint, domain_names, not_valid_before/after,
+                  labels.json*, actions/<action-id>/...
   images/
-    <id>/         name, type, status, os_flavor, os_version, architecture, disk_size
+    <id>/         name, type, status, os_flavor, os_version, architecture,
+                  disk_size, labels.json*, actions/<action-id>/...
   placement_groups/
-    <id>/         name, type, servers
+    <id>/         name*, type, servers, labels.json*
   isos/
     <id>/         name, description, type, architecture
   locations/
@@ -61,36 +70,74 @@ Unmount with Ctrl-C or `umount /tmp/hcloud`.
   by-name/
     <type>/
       <name> -> ../../<type>/<id>   (symlinks)
+  prometheus/
+    servers.prom        Prometheus text format, all server metrics
+    load_balancers.prom Prometheus text format, all load balancer metrics
 ```
 
-## Examples
+`*` — writable
+
+## Writable files
+
+Most resources support writing to `name` (rename) and `labels.json` (update labels):
 
 ```bash
-# watch a server's status
-watch cat /tmp/hcloud/servers/12345/status
+echo "new-name" > /tmp/hcloud/servers/12345/name
+echo '{"env":"prod","team":"ops"}' > /tmp/hcloud/servers/12345/labels.json
+echo '{}' > /tmp/hcloud/servers/12345/labels.json   # clear all labels
+```
 
-# find servers by label
+Server power state via `status`:
+
+```bash
+echo off      > /tmp/hcloud/servers/12345/status   # force power off
+echo shutdown > /tmp/hcloud/servers/12345/status   # graceful shutdown
+echo on       > /tmp/hcloud/servers/12345/status   # power on
+```
+
+## Actions
+
+Every resource that supports actions has an `actions/` subdirectory. Actions are sorted newest first and refresh every second.
+
+```bash
+# monitor a rebuild
+watch cat /tmp/hcloud/servers/12345/actions/98765/progress
+
+# check if an action succeeded
+cat /tmp/hcloud/servers/12345/actions/98765/status
+```
+
+## Prometheus
+
+The `prometheus/` directory contains `.prom` files in Prometheus text format, compatible with the node_exporter textfile collector:
+
+```bash
+node_exporter --collector.textfile.directory=/tmp/hcloud/prometheus
+```
+
+Server metrics: `cpu_percent`, `disk_read/write_iops`, `disk_read/write_bandwidth_bytes`, `network_in/out_bandwidth_bytes`, `network_in/out_pps`.
+
+Load balancer metrics: `open_connections`, `connections_per_second`, `requests_per_second`, `bandwidth_in/out_bytes`.
+
+## Navigation
+
+```bash
+# by label (any valid Hetzner label selector)
 ls /tmp/hcloud/by-label/env=prod/servers/
+ls /tmp/hcloud/by-label/env=prod,team=ops/servers/
 
-# navigate by name instead of ID
+# by name (symlinks to the ID-based paths)
 cat /tmp/hcloud/by-name/servers/my-server/public_ipv4
-
-# combine label and name navigation
-cat /tmp/hcloud/by-label/env=prod/servers/$(ls /tmp/hcloud/by-label/env=prod/servers/ | head -1)/name
-
-# get a full zone file
-cat /tmp/hcloud/dns/zones/192837/zone_file
-
-# check which firewall rules apply to a server's firewall
-cat /tmp/hcloud/firewalls/11111/rules.json
+cat /tmp/hcloud/by-name/firewalls/main-fw/rules.json
 ```
 
 ## Caching
 
-Data is cached for 10 seconds. File contents always reflect the latest cached data — reading a file never serves stale content from a previous cache window.
+Resources refresh every 10 seconds. Action files refresh every 1 second. Prometheus files refresh every 30 seconds (configurable).
 
 ## Flags
 
 ```
--debug    print FUSE debug output
+-debug              print FUSE debug output
+-prometheus-ttl     cache TTL for prometheus metrics files (default 30s)
 ```
