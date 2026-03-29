@@ -27,7 +27,7 @@ func newNetworksNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 			}),
 				textFile("ip_range", net.IPRange.String()),
 				textFile("created", net.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(net.Labels, "", "  ")
 					return string(data) + "\n"

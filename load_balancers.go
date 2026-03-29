@@ -27,7 +27,7 @@ func newLoadBalancersNode(client *hcloud.Client, selector string) fs.InodeEmbedd
 			}),
 				textFile("created", lb.Created.Format(time.RFC3339)),
 				textFile("algorithm", string(lb.Algorithm.Type)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(lb.Labels, "", "  ")
 					return string(data) + "\n"

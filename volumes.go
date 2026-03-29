@@ -30,7 +30,7 @@ func newVolumesNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("size", fmt.Sprintf("%d", v.Size)),
 				textFile("linux_device", v.LinuxDevice),
 				textFile("created", v.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(v.Labels, "", "  ")
 					return string(data) + "\n"

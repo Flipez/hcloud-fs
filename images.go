@@ -31,7 +31,7 @@ func newImagesNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("architecture", string(img.Architecture)),
 				textFile("disk_size", fmt.Sprintf("%.1f", img.DiskSize)),
 				textFile("created", img.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(img.Labels, "", "  ")
 					return string(data) + "\n"

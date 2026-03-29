@@ -28,7 +28,7 @@ func newSSHKeysNode(client *hcloud.Client, selector string) fs.InodeEmbedder {
 				textFile("fingerprint", k.Fingerprint),
 				textFile("public_key", k.PublicKey),
 				textFile("created", k.Created.Format(time.RFC3339)),
-				writableJSONFile("labels.json",
+				writableTextFile("labels.json",
 				func() string {
 					data, _ := json.MarshalIndent(k.Labels, "", "  ")
 					return string(data) + "\n"
