@@ -24,9 +24,9 @@ jobs:
           - os: darwin
             arch: arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -39,7 +39,7 @@ jobs:
           go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
             -o hcloud-fs-${{ matrix.os }}-${{ matrix.arch }} .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: hcloud-fs-${{ matrix.os }}-${{ matrix.arch }}
           path: hcloud-fs-${{ matrix.os }}-${{ matrix.arch }}
@@ -48,7 +48,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
 
