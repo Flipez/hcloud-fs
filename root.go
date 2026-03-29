@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"syscall"
+	"time"
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
@@ -10,11 +11,12 @@ import (
 
 type rootNode struct {
 	dirNode
-	client *hcloud.Client
+	client        *hcloud.Client
+	prometheusTTL time.Duration
 }
 
-func newRootNode(client *hcloud.Client) *rootNode {
-	return &rootNode{client: client}
+func newRootNode(client *hcloud.Client, prometheusTTL time.Duration) *rootNode {
+	return &rootNode{client: client, prometheusTTL: prometheusTTL}
 }
 
 func (r *rootNode) OnAdd(ctx context.Context) {
@@ -38,6 +40,7 @@ func (r *rootNode) OnAdd(ctx context.Context) {
 		{"server_types", newServerTypesNode(r.client)},
 		{"dns", newDNSNode(r.client)},
 		{"by-label", newByLabelNode(r.client)},
+		{"prometheus", newPrometheusNode(r.client, r.prometheusTTL)},
 		{"by-name", newByNameNode(r.client)},
 	}
 

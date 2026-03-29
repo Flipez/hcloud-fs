@@ -7,12 +7,15 @@ import (
 	"os/signal"
 	"syscall"
 
+	"time"
+
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 )
 
 func main() {
-	debug := flag.Bool("debug", false, "print debug data")
+	debug        := flag.Bool("debug", false, "print debug data")
+	prometheusTTL := flag.Duration("prometheus-ttl", 30*time.Second, "cache TTL for prometheus metrics files")
 	flag.Parse()
 	if len(flag.Args()) < 1 {
 		log.Fatal("Usage: hcloud-fs MOUNTPOINT")
@@ -27,7 +30,7 @@ func main() {
 	opts := &fs.Options{}
 	opts.Debug = *debug
 
-	server, err := fs.Mount(flag.Arg(0), newRootNode(client), opts)
+	server, err := fs.Mount(flag.Arg(0), newRootNode(client, *prometheusTTL), opts)
 	if err != nil {
 		log.Fatalf("Mount fail: %v\n", err)
 	}
