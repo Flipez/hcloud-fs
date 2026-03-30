@@ -2,6 +2,8 @@
 
 A FUSE filesystem that mounts your Hetzner Cloud infrastructure as a directory tree.
 
+![](hcloud-fs-demo.gif)
+
 ## Requirements
 
 - macFUSE (macOS): `brew install macfuse`
